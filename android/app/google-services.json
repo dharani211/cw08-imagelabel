@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "640405228305",
+    "project_id": "imagelab-db7d4",
+    "storage_bucket": "imagelab-db7d4.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:640405228305:android:51cb85242bdc1dd31f5ab0",
+        "android_client_info": {
+          "package_name": "com.cw08image.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAGu_S9TpHSt7FwNSctfxkcUPZkxWEvc6E"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
