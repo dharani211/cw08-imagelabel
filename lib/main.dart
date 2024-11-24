@@ -1,76 +1,62 @@
 import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:google_mlkit_image_labeling/google_mlkit_image_labeling.dart';
-import 'package:firebase_core/firebase_core.dart';
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(); // Initialize Firebase
-  runApp(ImageLabelingApp());
+void main() {
+  runApp(MyApp());
 }
 
-class ImageLabelingApp extends StatelessWidget {
+class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      home: ImageLabelingScreen(),
+      title: 'ML Kit Image Labeling',
+      theme: ThemeData(primarySwatch: Colors.blue),
+      home: ImageLabelingPage(),
     );
   }
 }
 
-class ImageLabelingScreen extends StatefulWidget {
+class ImageLabelingPage extends StatefulWidget {
   @override
-  _ImageLabelingScreenState createState() => _ImageLabelingScreenState();
+  _ImageLabelingPageState createState() => _ImageLabelingPageState();
 }
 
-class _ImageLabelingScreenState extends State<ImageLabelingScreen> {
-  File? _selectedImage;
-  List<String> _labels = [];
+class _ImageLabelingPageState extends State<ImageLabelingPage> {
   final ImagePicker _picker = ImagePicker();
+  XFile? _imageFile;
+  List<ImageLabel>? _labels;
 
-  // Function to pick an image from the camera or gallery
   Future<void> _pickImage(ImageSource source) async {
-    final pickedFile = await _picker.pickImage(source: source);
-    if (pickedFile != null) {
-      setState(() {
-        _selectedImage = File(pickedFile.path);
-      });
-      _labelImage();
-    }
+    final pickedImage = await _picker.pickImage(source: source);
+    if (pickedImage == null) return;
+
+    setState(() {
+      _imageFile = pickedImage;
+      _labels = null;
+    });
+
+    _labelImage(pickedImage);
   }
 
-  // Function to label objects in the selected image using Firebase ML Kit
-  Future<void> _labelImage() async {
-    if (_selectedImage == null) return;
-
-    final inputImage = InputImage.fromFile(_selectedImage!);
-    final imageLabeler = ImageLabeler(
-      options:
-          ImageLabelerOptions(confidenceThreshold: 0.5), // Confidence threshold
+  Future<void> _labelImage(XFile imageFile) async {
+    final InputImage inputImage = InputImage.fromFilePath(imageFile.path);
+    final ImageLabeler labeler = ImageLabeler(
+      options: ImageLabelerOptions(confidenceThreshold: 0.5),
     );
 
     try {
-      final List<ImageLabel> labels =
-          await imageLabeler.processImage(inputImage);
-
-      print('Detected labels:');
-      for (var label in labels) {
-        print(
-            '${label.label} - ${(label.confidence * 100).toStringAsFixed(2)}%');
-      }
+      final labels = await labeler.processImage(inputImage);
 
       setState(() {
-        _labels = labels
-            .map((label) =>
-                '${label.label} (${(label.confidence * 100).toStringAsFixed(2)}%)')
-            .toList();
+        _labels = labels;
       });
     } catch (e) {
-      print('Error during image labeling: $e');
+      print('Error labeling image: $e');
     } finally {
-      imageLabeler.close();
+      labeler.close();
     }
   }
 
@@ -78,31 +64,35 @@ class _ImageLabelingScreenState extends State<ImageLabelingScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Image Labeling App'),
+        title: Text('Image Labeling with ML Kit'),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            // Display the selected image
-            if (_selectedImage != null)
+            if (_imageFile != null)
               Image.file(
-                _selectedImage!,
+                File(_imageFile!.path),
                 height: 200,
-                width: double.infinity,
                 fit: BoxFit.cover,
-              )
-            else
-              Container(
-                height: 200,
-                width: double.infinity,
-                color: Colors.grey[300],
-                child: Center(
-                  child: Text('No image selected'),
+              ),
+            if (_labels != null) ...[
+              SizedBox(height: 16),
+              Expanded(
+                child: ListView.builder(
+                  itemCount: _labels!.length,
+                  itemBuilder: (context, index) {
+                    final label = _labels![index];
+                    return ListTile(
+                      title: Text(label.label),
+                      subtitle: Text(
+                          'Confidence: ${(label.confidence * 100).toStringAsFixed(2)}%'),
+                    );
+                  },
                 ),
               ),
-            const SizedBox(height: 16),
-            // Buttons to pick an image from the camera or gallery
+            ],
+            Spacer(),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
@@ -117,23 +107,6 @@ class _ImageLabelingScreenState extends State<ImageLabelingScreen> {
                   label: Text('Gallery'),
                 ),
               ],
-            ),
-            const SizedBox(height: 16),
-            // Display the detected labels
-            Expanded(
-              child: _labels.isNotEmpty
-                  ? ListView.builder(
-                      itemCount: _labels.length,
-                      itemBuilder: (context, index) {
-                        return ListTile(
-                          leading: Icon(Icons.label),
-                          title: Text(_labels[index]),
-                        );
-                      },
-                    )
-                  : Center(
-                      child: Text('No labels detected'),
-                    ),
             ),
           ],
         ),
